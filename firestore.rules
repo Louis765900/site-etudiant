@@ -1,0 +1,50 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Profiles: users can read/write their own profile
+    match /profiles/{userId} {
+      allow read, update, delete: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.user_id;
+    }
+
+    // Tasks: users can manage their own tasks
+    match /tasks/{taskId} {
+      allow read: if request.auth != null && request.auth.uid == resource.data.user_id;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.user_id;
+      allow update, delete: if request.auth != null && request.auth.uid == resource.data.user_id;
+    }
+
+    // Courses: public read, write restricted to authenticated users (adjust as needed)
+    match /courses/{courseId} {
+      allow read: if true;
+      allow create, update, delete: if request.auth != null;
+    }
+
+    // Stage activities: user-scoped
+    match /stage_activities/{activityId} {
+      allow read: if request.auth != null && request.auth.uid == resource.data.user_id;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.user_id;
+      allow update, delete: if request.auth != null && request.auth.uid == resource.data.user_id;
+    }
+
+    // Conversations: user-scoped
+    match /conversations/{convId} {
+      allow read: if request.auth != null && request.auth.uid == resource.data.user_id;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.user_id;
+      allow update, delete: if request.auth != null && request.auth.uid == resource.data.user_id;
+    }
+
+    // Parental consents: user-scoped or admin-managed
+    match /parental_consents/{consentId} {
+      allow read: if request.auth != null && (request.auth.uid == resource.data.user_id || request.auth.token.admin == true);
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.user_id;
+      allow update, delete: if request.auth != null && (request.auth.uid == resource.data.user_id || request.auth.token.admin == true);
+    }
+
+    // Fallback: deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
