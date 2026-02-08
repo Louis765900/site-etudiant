@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState } from 'react'
 import { useUser } from '@/hooks/useUser'
 import { db } from '@/lib/firebase'
 import {
@@ -8,11 +8,12 @@ import {
   query,
   where,
   orderBy,
-  getDocs,
+  onSnapshot,
   addDoc,
   doc,
   updateDoc,
   deleteDoc,
+  Timestamp,
 } from 'firebase/firestore'
 import {
   Plus,
@@ -22,13 +23,15 @@ import {
   Edit2,
   Trash2,
   X,
-  Search
+  Search,
+  BookOpen,
 } from 'lucide-react'
 
 interface Task {
   id: string
   title: string
   description: string | null
+  subject: string | null
   deadline: string
   completed: boolean
   priority: 'low' | 'medium' | 'high'
@@ -43,6 +46,23 @@ const PRIORITIES = [
   { value: 'high', label: 'Haute', color: 'bg-rose-100 text-rose-700 border-rose-200', dot: 'bg-rose-500' },
 ]
 
+const SUBJECTS = [
+  'Mathematiques',
+  'Francais',
+  'Anglais',
+  'Histoire-Geographie',
+  'Physique-Chimie',
+  'SVT',
+  'Philosophie',
+  'SES',
+  'NSI / Informatique',
+  'Espagnol',
+  'Allemand',
+  'Arts',
+  'EPS',
+  'Autre',
+]
+
 export default function TasksPage() {
   const { user, loading } = useUser()
   const [tasks, setTasks] = useState<Task[]>([])
@@ -53,34 +73,32 @@ export default function TasksPage() {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
+    subject: '',
     deadline: '',
     priority: 'medium' as 'low' | 'medium' | 'high',
   })
   const [tasksLoading, setTasksLoading] = useState(true)
 
-  const loadTasks = useCallback(async () => {
-    if (!user) return
-    setTasksLoading(true)
-    try {
-      const q = query(
-        collection(db, 'tasks'),
-        where('user_id', '==', user.uid),
-        orderBy('deadline', 'asc')
-      )
-      const snap = await getDocs(q)
-      const data = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Task))
-      setTasks(data)
-    } catch (error) {
-      console.error('Error loading tasks:', error)
-    } finally {
-      setTasksLoading(false)
-    }
-  }, [user])
-
+  // Real-time listener with onSnapshot
   useEffect(() => {
     if (!user) return
-    loadTasks()
-  }, [user, loadTasks])
+
+    const q = query(
+      collection(db, 'tasks'),
+      where('user_id', '==', user.uid),
+      orderBy('deadline', 'asc')
+    )
+
+    const unsub = onSnapshot(q, (snap) => {
+      const data = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Task))
+      setTasks(data)
+      setTasksLoading(false)
+    }, () => {
+      setTasksLoading(false)
+    })
+
+    return () => unsub()
+  }, [user])
 
   const handleOpenModal = (task?: Task) => {
     if (task) {
@@ -88,6 +106,7 @@ export default function TasksPage() {
       setFormData({
         title: task.title,
         description: task.description || '',
+        subject: task.subject || '',
         deadline: task.deadline,
         priority: task.priority,
       })
@@ -96,6 +115,7 @@ export default function TasksPage() {
       setFormData({
         title: '',
         description: '',
+        subject: '',
         deadline: '',
         priority: 'medium',
       })
@@ -109,6 +129,7 @@ export default function TasksPage() {
     setFormData({
       title: '',
       description: '',
+      subject: '',
       deadline: '',
       priority: 'medium',
     })
@@ -122,7 +143,8 @@ export default function TasksPage() {
       if (editingTask) {
         await updateDoc(doc(db, 'tasks', editingTask.id), {
           title: formData.title,
-          description: formData.description,
+          description: formData.description || null,
+          subject: formData.subject || null,
           deadline: formData.deadline,
           priority: formData.priority,
         })
@@ -130,15 +152,15 @@ export default function TasksPage() {
         await addDoc(collection(db, 'tasks'), {
           user_id: user.uid,
           title: formData.title,
-          description: formData.description,
+          description: formData.description || null,
+          subject: formData.subject || null,
           deadline: formData.deadline,
           priority: formData.priority,
           completed: false,
-          created_at: new Date(),
+          created_at: Timestamp.now(),
         })
       }
 
-      await loadTasks()
       handleCloseModal()
     } catch (error) {
       console.error('Error saving task:', error)
@@ -148,27 +170,42 @@ export default function TasksPage() {
   const handleToggleComplete = async (taskId: string, completed: boolean) => {
     try {
       await updateDoc(doc(db, 'tasks', taskId), { completed: !completed })
-      await loadTasks()
     } catch (error) {
       console.error('Error updating task:', error)
     }
   }
 
   const handleDeleteTask = async (taskId: string) => {
-    if (!confirm('Es-tu sûr de vouloir supprimer ce devoir ?')) return
+    if (!confirm('Es-tu sur de vouloir supprimer ce devoir ?')) return
 
     try {
       await deleteDoc(doc(db, 'tasks', taskId))
-      await loadTasks()
     } catch (error) {
       console.error('Error deleting task:', error)
     }
   }
 
+  const handleDuplicateTask = async (task: Task) => {
+    if (!user) return
+    try {
+      await addDoc(collection(db, 'tasks'), {
+        user_id: user.uid,
+        title: task.title + ' (copie)',
+        description: task.description,
+        subject: task.subject,
+        deadline: task.deadline,
+        priority: task.priority,
+        completed: false,
+        created_at: Timestamp.now(),
+      })
+    } catch (error) {
+      console.error('Error duplicating task:', error)
+    }
+  }
+
   const getFilteredTasks = () => {
     let filtered = tasks
-    
-    // Apply status filter
+
     if (filter === 'todo') {
       filtered = filtered.filter((t) => !t.completed)
     } else if (filter === 'completed') {
@@ -176,16 +213,16 @@ export default function TasksPage() {
     } else if (filter === 'urgent') {
       filtered = filtered.filter((t) => !t.completed && t.priority === 'high')
     }
-    
-    // Apply search filter
+
     if (searchQuery) {
-      const query = searchQuery.toLowerCase()
-      filtered = filtered.filter((t) => 
-        t.title.toLowerCase().includes(query) ||
-        t.description?.toLowerCase().includes(query)
+      const q = searchQuery.toLowerCase()
+      filtered = filtered.filter((t) =>
+        t.title.toLowerCase().includes(q) ||
+        t.description?.toLowerCase().includes(q) ||
+        t.subject?.toLowerCase().includes(q)
       )
     }
-    
+
     return filtered
   }
 
@@ -237,7 +274,6 @@ export default function TasksPage() {
         <div className="flex flex-col items-center gap-4">
           <div className="relative">
             <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
-            <div className="absolute inset-0 w-12 h-12 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin delay-150 opacity-50" />
           </div>
           <p className="text-gray-500 font-medium">Chargement des devoirs...</p>
         </div>
@@ -256,7 +292,7 @@ export default function TasksPage() {
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Mes devoirs</h1>
           <p className="text-gray-600 mt-1">
-            {completedCount} sur {totalCount} terminés • {progress}% de progression
+            {completedCount} sur {totalCount} termines - {progress}% de progression
           </p>
         </div>
         <button
@@ -275,7 +311,7 @@ export default function TasksPage() {
           <span className="text-2xl font-bold text-indigo-600">{progress}%</span>
         </div>
         <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
-          <div 
+          <div
             className="h-full bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full transition-all duration-500"
             style={{ width: `${progress}%` }}
           />
@@ -306,8 +342,8 @@ export default function TasksPage() {
               }`}
             >
               {f === 'all' && 'Tous'}
-              {f === 'todo' && 'À faire'}
-              {f === 'completed' && 'Terminés'}
+              {f === 'todo' && 'A faire'}
+              {f === 'completed' && 'Termines'}
               {f === 'urgent' && 'Urgents'}
             </button>
           ))}
@@ -361,6 +397,12 @@ export default function TasksPage() {
                               <span className={`w-1.5 h-1.5 rounded-full ${priorityStyle.dot}`} />
                               {priorityStyle.label}
                             </span>
+                            {task.subject && (
+                              <span className="inline-flex items-center gap-1.5 text-xs px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                <BookOpen className="w-3 h-3" />
+                                {task.subject}
+                              </span>
+                            )}
                             <span className="inline-flex items-center gap-1.5 text-sm text-gray-500">
                               <Calendar className="w-4 h-4" />
                               {new Date(task.deadline).toLocaleDateString('fr-FR', {
@@ -372,6 +414,13 @@ export default function TasksPage() {
                           </div>
                         </div>
                         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={() => handleDuplicateTask(task)}
+                            className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors"
+                            title="Dupliquer"
+                          >
+                            <Plus className="w-4 h-4" />
+                          </button>
                           <button
                             onClick={() => handleOpenModal(task)}
                             className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors"
@@ -400,12 +449,12 @@ export default function TasksPage() {
               <CheckCircle2 className="w-10 h-10 text-indigo-600" />
             </div>
             <h3 className="text-xl font-bold text-gray-900 mb-2">
-              {searchQuery ? 'Aucun devoir trouvé' : 'Pas de devoirs !'}
+              {searchQuery ? 'Aucun devoir trouve' : 'Pas de devoirs !'}
             </h3>
             <p className="text-gray-500 max-w-md mx-auto">
-              {searchQuery 
+              {searchQuery
                 ? 'Essaye une autre recherche ou modifie tes filtres.'
-                : 'Profite de ton temps libre ou ajoute de nouveaux devoirs à ta liste.'
+                : 'Profite de ton temps libre ou ajoute de nouveaux devoirs a ta liste.'
               }
             </p>
             {!searchQuery && (
@@ -447,9 +496,25 @@ export default function TasksPage() {
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all"
-                  placeholder="Ex: Réviser le chapitre 3"
+                  placeholder="Ex: Reviser le chapitre 3"
                   required
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Matiere (optionnelle)
+                </label>
+                <select
+                  value={formData.subject}
+                  onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all"
+                >
+                  <option value="">Selectionner une matiere</option>
+                  {SUBJECTS.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
               </div>
 
               <div>
@@ -461,13 +526,13 @@ export default function TasksPage() {
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all resize-none"
                   rows={3}
-                  placeholder="Ajoute des détails..."
+                  placeholder="Ajoute des details..."
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Date d'échéance
+                  Date d&apos;echeance
                 </label>
                 <input
                   type="date"
@@ -480,7 +545,7 @@ export default function TasksPage() {
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Priorité
+                  Priorite
                 </label>
                 <div className="grid grid-cols-3 gap-3">
                   {PRIORITIES.map((p) => (
@@ -512,7 +577,7 @@ export default function TasksPage() {
                   type="submit"
                   className="flex-1 px-4 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl font-semibold transition-all"
                 >
-                  {editingTask ? 'Enregistrer' : 'Créer'}
+                  {editingTask ? 'Enregistrer' : 'Creer'}
                 </button>
               </div>
 
