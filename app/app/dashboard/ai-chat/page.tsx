@@ -3,8 +3,8 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useUser } from '@/hooks/useUser'
 import { db } from '@/lib/firebase'
-import { collection, query, where, orderBy, onSnapshot, limit, addDoc, Timestamp } from 'firebase/firestore'
-import { Send, Sparkles, Bot, User, Lightbulb, MessageSquare, Brain, ArrowRight } from 'lucide-react'
+import { collection, query, where, orderBy, onSnapshot, limit, addDoc, deleteDoc, doc, Timestamp } from 'firebase/firestore'
+import { Send, Sparkles, Bot, User, Lightbulb, MessageSquare, Brain, ArrowRight, Search, Trash2, X } from 'lucide-react'
 import Link from 'next/link'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -32,35 +32,35 @@ const STYLE_META: Record<string, { emoji: string; label: string; color: string }
 
 const SUGGESTED_QUESTIONS: Record<string, string[]> = {
   'Visuel Structuré': [
-    'Fais-moi un schéma récapitulatif sur ce chapitre',
+    'Fais-moi un schema recapitulatif sur ce chapitre',
     'Organise ces informations dans un tableau comparatif',
-    'Crée une fiche de révision visuelle',
-    'Résume ce cours avec des points clés numérotés',
+    'Cree une fiche de revision visuelle',
+    'Resume ce cours avec des points cles numerotes',
   ],
   'Auditif Conversationnel': [
     'Explique-moi ce concept comme si on discutait',
-    'Raconte-moi l\'histoire derrière cette théorie',
-    'Aide-moi à comprendre en me posant des questions',
-    'Reformule cette leçon de manière simple',
+    'Raconte-moi l\'histoire derriere cette theorie',
+    'Aide-moi a comprendre en me posant des questions',
+    'Reformule cette lecon de maniere simple',
   ],
   'Pragmatique Rapide': [
-    'Donne-moi la réponse courte et un exemple',
-    'Crée-moi un exercice pratique sur ce sujet',
-    'Résume en 3 points essentiels',
-    'Donne-moi une méthode rapide pour résoudre ça',
+    'Donne-moi la reponse courte et un exemple',
+    'Cree-moi un exercice pratique sur ce sujet',
+    'Resume en 3 points essentiels',
+    'Donne-moi une methode rapide pour resoudre ca',
   ],
   'Analytique Approfondi': [
-    'Explique-moi le pourquoi derrière ce concept',
+    'Explique-moi le pourquoi derriere ce concept',
     'Quels sont les liens entre ces deux notions ?',
     'Analyse en profondeur ce sujet',
-    'Quelles sont les limites de cette théorie ?',
+    'Quelles sont les limites de cette theorie ?',
   ],
   default: [
     'Explique-moi un concept en maths',
-    'Résume ce texte pour moi',
-    'Aide-moi à préparer mon exposé',
-    'Crée un plan de révision',
-    'Donne-moi des exercices d\'entraînement',
+    'Resume ce texte pour moi',
+    'Aide-moi a preparer mon expose',
+    'Cree un plan de revision',
+    'Donne-moi des exercices d\'entrainement',
   ],
 }
 
@@ -74,6 +74,8 @@ export default function AIChatPage() {
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [conversationHistory, setConversationHistory] = useState<ConversationEntry[]>([])
+  const [historySearch, setHistorySearch] = useState('')
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -86,7 +88,7 @@ export default function AIChatPage() {
       collection(db, 'conversations'),
       where('user_id', '==', user.uid),
       orderBy('created_at', 'desc'),
-      limit(20)
+      limit(50)
     )
     const unsub = onSnapshot(q, (snap) => {
       const data = snap.docs.map((d) => ({ id: d.id, ...d.data() } as ConversationEntry))
@@ -102,6 +104,31 @@ export default function AIChatPage() {
   useEffect(() => {
     scrollToBottom()
   }, [messages])
+
+  const handleLoadConversation = useCallback((conv: ConversationEntry) => {
+    const userMsg: Message = {
+      id: conv.id + '-user',
+      role: 'user',
+      content: conv.message,
+      timestamp: conv.created_at ? new Date(conv.created_at) : new Date(),
+    }
+    const assistantMsg: Message = {
+      id: conv.id + '-assistant',
+      role: 'assistant',
+      content: conv.response,
+      timestamp: conv.created_at ? new Date(conv.created_at) : new Date(),
+    }
+    setMessages([userMsg, assistantMsg])
+  }, [])
+
+  const handleDeleteConversation = async (convId: string) => {
+    try {
+      await deleteDoc(doc(db, 'conversations', convId))
+      setShowDeleteConfirm(null)
+    } catch (error) {
+      console.error('Error deleting conversation:', error)
+    }
+  }
 
   const handleSendMessage = useCallback(async (e?: React.FormEvent) => {
     e?.preventDefault()
@@ -120,7 +147,6 @@ export default function AIChatPage() {
     setIsLoading(true)
 
     try {
-      // Send recent history and profile info to the API
       const recentHistory = conversationHistory
         .slice(0, 5)
         .reverse()
@@ -154,7 +180,6 @@ export default function AIChatPage() {
 
       setMessages((prev) => [...prev, assistantMessage])
 
-      // Save conversation to Firestore (client-side)
       try {
         await addDoc(collection(db, 'conversations'), {
           user_id: user.uid,
@@ -171,7 +196,7 @@ export default function AIChatPage() {
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: `Désolé, une erreur est survenue : ${error instanceof Error ? error.message : 'Erreur inconnue'}. Vérifie que GEMINI_API_KEY est bien configuré dans .env.local.`,
+        content: `Desole, une erreur est survenue : ${error instanceof Error ? error.message : 'Erreur inconnue'}. Verifie que GEMINI_API_KEY est bien configure dans .env.local.`,
         timestamp: new Date(),
       }
       setMessages((prev) => [...prev, errorMessage])
@@ -193,7 +218,6 @@ export default function AIChatPage() {
         <div className="flex flex-col items-center gap-4">
           <div className="relative">
             <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
-            <div className="absolute inset-0 w-12 h-12 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin delay-150 opacity-50" />
           </div>
           <p className="text-gray-500 font-medium">Chargement...</p>
         </div>
@@ -202,6 +226,14 @@ export default function AIChatPage() {
   }
 
   const suggestedQuestions = getSuggestedQuestions(profile?.learning_style)
+
+  // Filter history by search
+  const filteredHistory = historySearch
+    ? conversationHistory.filter((c) =>
+        c.message.toLowerCase().includes(historySearch.toLowerCase()) ||
+        c.response.toLowerCase().includes(historySearch.toLowerCase())
+      )
+    : conversationHistory
 
   return (
     <div className="h-[calc(100vh-4rem)] flex">
@@ -227,29 +259,87 @@ export default function AIChatPage() {
           </div>
         )}
 
+        {/* Search in history */}
+        <div className="px-4 pt-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              value={historySearch}
+              onChange={(e) => setHistorySearch(e.target.value)}
+              placeholder="Rechercher..."
+              className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all"
+            />
+            {historySearch && (
+              <button
+                onClick={() => setHistorySearch('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            )}
+          </div>
+        </div>
+
         <div className="flex-1 overflow-y-auto p-4">
           <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
-            Historique récent
+            Historique ({filteredHistory.length})
           </h3>
-          {conversationHistory.length === 0 ? (
+          {filteredHistory.length === 0 ? (
             <div className="text-center py-8">
               <MessageSquare className="w-12 h-12 text-gray-200 mx-auto mb-3" />
-              <p className="text-gray-400 text-sm">Aucune conversation précédente</p>
+              <p className="text-gray-400 text-sm">
+                {historySearch ? 'Aucun resultat' : 'Aucune conversation'}
+              </p>
             </div>
           ) : (
             <div className="space-y-2">
-              {conversationHistory.map((conv) => (
-                <button
-                  key={conv.id}
-                  className="w-full text-left p-3 rounded-xl hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-200"
-                >
-                  <p className="font-medium text-gray-700 truncate text-sm">
-                    {conv.message}
-                  </p>
-                  <p className="text-xs text-gray-400 mt-1">
-                    {conv.created_at ? new Date(conv.created_at).toLocaleDateString('fr-FR') : ''}
-                  </p>
-                </button>
+              {filteredHistory.map((conv) => (
+                <div key={conv.id} className="relative group">
+                  <button
+                    onClick={() => handleLoadConversation(conv)}
+                    className="w-full text-left p-3 rounded-xl hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-200"
+                  >
+                    <p className="font-medium text-gray-700 truncate text-sm pr-6">
+                      {conv.message}
+                    </p>
+                    <p className="text-xs text-gray-400 mt-1 truncate">
+                      {conv.response.substring(0, 60)}...
+                    </p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      {conv.created_at ? new Date(conv.created_at).toLocaleDateString('fr-FR', {
+                        day: 'numeric',
+                        month: 'short',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      }) : ''}
+                    </p>
+                  </button>
+                  {/* Delete button */}
+                  {showDeleteConfirm === conv.id ? (
+                    <div className="absolute top-2 right-2 flex gap-1">
+                      <button
+                        onClick={() => handleDeleteConversation(conv.id)}
+                        className="p-1.5 bg-rose-100 text-rose-600 rounded-lg text-xs font-medium hover:bg-rose-200 transition-colors"
+                      >
+                        Suppr.
+                      </button>
+                      <button
+                        onClick={() => setShowDeleteConfirm(null)}
+                        className="p-1.5 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setShowDeleteConfirm(conv.id)}
+                      className="absolute top-3 right-3 p-1.5 text-gray-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all rounded-lg hover:bg-rose-50"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
               ))}
             </div>
           )}
@@ -266,11 +356,10 @@ export default function AIChatPage() {
             </div>
             <div>
               <h1 className="font-bold text-gray-900">Assistant IA</h1>
-              <p className="text-sm text-gray-500">Propulsé par Gemini 2.5 Flash</p>
+              <p className="text-sm text-gray-500">Propulse par Gemini 2.5 Flash</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            {/* Learning style badge in header */}
             {styleMeta && (
               <div className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium ${styleMeta.color}`}>
                 <span>{styleMeta.emoji}</span>
@@ -298,18 +387,17 @@ export default function AIChatPage() {
               </h2>
               <p className="text-gray-600 mb-4 max-w-md">
                 {styleMeta
-                  ? `Tes réponses sont adaptées à ton profil ${styleMeta.emoji} ${styleMeta.label}. Je m'adapte à ta façon d'apprendre !`
-                  : 'Je suis ton assistant pédagogique personnel. Je peux t\'expliquer des concepts, créer des quiz, résumer tes cours ou t\'aider à réviser.'}
+                  ? `Tes reponses sont adaptees a ton profil ${styleMeta.emoji} ${styleMeta.label}. Je m'adapte a ta facon d'apprendre !`
+                  : 'Je suis ton assistant pedagogique personnel. Je peux t\'expliquer des concepts, creer des quiz, resumer tes cours ou t\'aider a reviser.'}
               </p>
 
-              {/* CTA to take the test if not done */}
               {!hasCompletedTest && (
                 <Link
                   href="/app/onboarding/personality-test"
                   className="mb-6 flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-200 text-amber-800 rounded-2xl hover:border-amber-300 hover:shadow-md transition-all group"
                 >
                   <Brain className="w-5 h-5 text-amber-600" />
-                  <span className="font-semibold text-sm">Passe le test de personnalité pour des réponses personnalisées</span>
+                  <span className="font-semibold text-sm">Passe le test de personnalite pour des reponses personnalisees</span>
                   <ArrowRight className="w-4 h-4 text-amber-500 group-hover:translate-x-1 transition-transform" />
                 </Link>
               )}
@@ -429,7 +517,7 @@ export default function AIChatPage() {
               </button>
             </form>
             <p className="text-xs text-gray-400 mt-2 text-center">
-              L&apos;IA peut parfois faire des erreurs. Vérifie les informations importantes.
+              L&apos;IA peut parfois faire des erreurs. Verifie les informations importantes.
             </p>
           </div>
         </div>

@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useUser } from '@/hooks/useUser'
 import { auth } from '@/lib/firebase'
 import { signOut } from 'firebase/auth'
-import { User, LogOut, Settings, LayoutDashboard, CheckSquare, MessageSquare } from 'lucide-react'
+import { LogOut, Settings, LayoutDashboard, CheckSquare, MessageSquare, StickyNote, Briefcase } from 'lucide-react'
 
 const clearAuthCookie = () => {
   document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'
@@ -120,8 +120,16 @@ export function AuthButton() {
               <CheckSquare className="w-5 h-5 text-gray-400" />
               <span className="font-medium">Mes devoirs</span>
             </Link>
-            <Link 
-              href="/app/dashboard/ai-chat" 
+            <Link
+              href="/app/dashboard/notes"
+              className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 transition-colors"
+              onClick={() => setIsOpen(false)}
+            >
+              <StickyNote className="w-5 h-5 text-gray-400" />
+              <span className="font-medium">Notes</span>
+            </Link>
+            <Link
+              href="/app/dashboard/ai-chat"
               className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 transition-colors"
               onClick={() => setIsOpen(false)}
             >
@@ -129,12 +137,12 @@ export function AuthButton() {
               <span className="font-medium">Assistant IA</span>
             </Link>
             <Link
-              href="/app/onboarding/personality-test"
+              href="/app/dashboard/stage"
               className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 transition-colors"
               onClick={() => setIsOpen(false)}
             >
-              <User className="w-5 h-5 text-gray-400" />
-              <span className="font-medium">Mon profil</span>
+              <Briefcase className="w-5 h-5 text-gray-400" />
+              <span className="font-medium">Stage</span>
             </Link>
             <Link
               href="/app/dashboard/settings"

@@ -147,7 +147,7 @@ export default function DashboardPage() {
             className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-2xl font-semibold transition-all shadow-lg hover:shadow-xl"
           >
             <Sparkles className="w-5 h-5" />
-            Discuter avec l'IA
+            Discuter avec l&apos;IA
           </Link>
         </div>
       </div>
@@ -229,7 +229,7 @@ export default function DashboardPage() {
                     <Target className="w-8 h-8 text-indigo-600" />
                   </div>
                   <p className="text-gray-500 font-medium">Aucun devoir en attente</p>
-                  <p className="text-sm text-gray-400 mt-1">Parfait ! Profite pour avancer sur d'autres projets.</p>
+                  <p className="text-sm text-gray-400 mt-1">Parfait ! Profite pour avancer sur d&apos;autres projets.</p>
                   <Link
                     href="/app/dashboard/tasks"
                     className="inline-flex items-center gap-2 mt-4 px-4 py-2 bg-indigo-50 text-indigo-700 rounded-xl font-medium hover:bg-indigo-100 transition-colors"
@@ -307,8 +307,9 @@ export default function DashboardPage() {
             <div className="space-y-3">
               {[
                 { name: 'Nouveau devoir', href: '/app/dashboard/tasks', color: 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100' },
-                { name: 'Parler à l\'IA', href: '/app/dashboard/ai-chat', color: 'bg-purple-50 text-purple-700 hover:bg-purple-100' },
-                { name: 'Voir mon profil', href: '/app/onboarding/personality-test', color: 'bg-pink-50 text-pink-700 hover:bg-pink-100' },
+                { name: 'Prendre des notes', href: '/app/dashboard/notes', color: 'bg-blue-50 text-blue-700 hover:bg-blue-100' },
+                { name: 'Parler a l\'IA', href: '/app/dashboard/ai-chat', color: 'bg-purple-50 text-purple-700 hover:bg-purple-100' },
+                { name: 'Heures de stage', href: '/app/dashboard/stage', color: 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100' },
               ].map((action) => (
                 <Link
                   key={action.name}
@@ -327,7 +328,7 @@ export default function DashboardPage() {
               <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
                 <Sparkles className="w-5 h-5 text-amber-600" />
               </div>
-              <h3 className="font-bold text-gray-900">Style d'apprentissage</h3>
+              <h3 className="font-bold text-gray-900">Style d&apos;apprentissage</h3>
             </div>
             {profile?.learning_style ? (
               <div>
@@ -355,20 +356,23 @@ export default function DashboardPage() {
           </div>
 
           {/* Stage Hours Card */}
-          <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-3xl p-6 border border-emerald-100">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
-                <Clock className="w-5 h-5 text-emerald-600" />
+          <Link href="/app/dashboard/stage" className="block bg-gradient-to-br from-emerald-50 to-teal-50 rounded-3xl p-6 border border-emerald-100 hover:shadow-lg transition-all group">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
+                  <Clock className="w-5 h-5 text-emerald-600" />
+                </div>
+                <h3 className="font-bold text-gray-900">Heures de stage</h3>
               </div>
-              <h3 className="font-bold text-gray-900">Heures de stage</h3>
+              <ArrowRight className="w-4 h-4 text-emerald-500 group-hover:translate-x-1 transition-transform" />
             </div>
             <p className="text-3xl font-bold text-emerald-700 mb-1">
               {stageHours.toFixed(1)}h
             </p>
             <p className="text-sm text-gray-600">
-              Temps total enregistré
+              Clique pour gerer tes heures
             </p>
-          </div>
+          </Link>
         </div>
       </div>
     </div>

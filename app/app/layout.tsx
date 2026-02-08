@@ -7,7 +7,8 @@ import {
   LayoutDashboard,
   CheckSquare,
   MessageSquare,
-  UserCircle,
+  StickyNote,
+  Briefcase,
   Settings,
   Sparkles,
   Menu,
@@ -17,10 +18,11 @@ import { useState } from 'react'
 
 const navigation = [
   { name: 'Tableau de bord', href: '/app/dashboard', icon: LayoutDashboard },
-  { name: 'Mes devoirs', href: '/app/dashboard/tasks', icon: CheckSquare },
+  { name: 'Devoirs', href: '/app/dashboard/tasks', icon: CheckSquare },
+  { name: 'Notes', href: '/app/dashboard/notes', icon: StickyNote },
   { name: 'Assistant IA', href: '/app/dashboard/ai-chat', icon: MessageSquare },
-  { name: 'Mon profil', href: '/app/onboarding/personality-test', icon: UserCircle },
-  { name: 'Paramètres', href: '/app/dashboard/settings', icon: Settings },
+  { name: 'Stage', href: '/app/dashboard/stage', icon: Briefcase },
+  { name: 'Parametres', href: '/app/dashboard/settings', icon: Settings },
 ]
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
