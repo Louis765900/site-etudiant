@@ -3,11 +3,12 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { AuthButton } from '@/components/AuthButton'
-import { 
-  LayoutDashboard, 
-  CheckSquare, 
-  MessageSquare, 
-  UserCircle, 
+import {
+  LayoutDashboard,
+  CheckSquare,
+  MessageSquare,
+  UserCircle,
+  Settings,
   Sparkles,
   Menu,
   X
@@ -19,6 +20,7 @@ const navigation = [
   { name: 'Mes devoirs', href: '/app/dashboard/tasks', icon: CheckSquare },
   { name: 'Assistant IA', href: '/app/dashboard/ai-chat', icon: MessageSquare },
   { name: 'Mon profil', href: '/app/onboarding/personality-test', icon: UserCircle },
+  { name: 'Paramètres', href: '/app/dashboard/settings', icon: Settings },
 ]
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {

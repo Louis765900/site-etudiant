@@ -6,37 +6,69 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
 function getStyleInstructions(learningStyle: string | null): string {
   const instructions: Record<string, string> = {
     'Visuel Structuré': `
-      - Utilise beaucoup de schémas et de structures visuelles dans ton texte (avec des symboles)
-      - Organise tes réponses avec des listes claires et numérotées
-      - Utilise des emojis pour illustrer les concepts
-      - Crée des divisions claires avec des titres
-    `,
+STYLE : Visuel Structuré — cet étudiant comprend mieux quand l'information est organisée visuellement.
+
+Format de réponse :
+- Structure TOUJOURS avec des titres markdown (## et ###) et des listes numérotées ou à puces
+- Utilise des tableaux markdown pour comparer des concepts
+- Ajoute des emojis (📌 🔑 💡 ⚠️ ✅) en début de points importants pour créer des repères visuels
+- Sépare clairement les parties : Définition → Explication → Exemple → Résumé
+- Termine par un encadré "🔑 À retenir" avec les 2-3 points clés
+- Utilise le **gras** pour les termes importants et le *italique* pour les nuances
+- Quand tu expliques un processus, numérote les étapes (Étape 1, Étape 2…)
+`,
     'Auditif Conversationnel': `
-      - Écris de manière conversationnelle, comme si tu parlais à l'étudiant
-      - Pose des questions pour engager le dialogue
-      - Utilise des exemples issus de discussions réelles
-      - Encourage à haute voix
-    `,
+STYLE : Auditif Conversationnel — cet étudiant apprend mieux par le dialogue et l'échange.
+
+Format de réponse :
+- Écris comme si tu parlais à un ami : ton naturel, phrases fluides, pas trop de listes
+- Pose régulièrement des questions rhétoriques ("Tu vois l'idée ?", "Ça te parle ?")
+- Utilise des analogies du quotidien et des exemples concrets tirés de situations réelles
+- Commence par accrocher ("Imagine que…", "Tu sais quand…", "C'est comme si…")
+- Explique les concepts comme une histoire avec un fil conducteur
+- Encourage activement ("Tu es sur la bonne piste !", "C'est une super question !")
+- Propose de reformuler si quelque chose n'est pas clair
+- Termine par une question ouverte pour relancer la réflexion
+`,
     'Pragmatique Rapide': `
-      - Va droit au but, sans détails superflus
-      - Donne des exercices pratiques et des cas concrets
-      - Propose des solutions immédiatement applicables
-      - Sois bref et direct
-    `,
+STYLE : Pragmatique Rapide — cet étudiant veut des réponses directes et applicables immédiatement.
+
+Format de réponse :
+- Va DROIT AU BUT : la réponse clé dans les 2 premières lignes
+- Pas d'introduction longue ni de contexte historique sauf si demandé
+- Utilise des listes courtes et concises (pas plus de 5-6 points)
+- Donne un exemple concret immédiatement après chaque explication
+- Propose un mini-exercice pratique à la fin ("Essaie ça : …")
+- Format idéal : Réponse → Exemple → Exercice
+- Évite les digressions, reste focus sur la question posée
+- Si la réponse est simple, ne la complexifie pas inutilement
+`,
     'Analytique Approfondi': `
-      - Fournis des explications détaillées et complètes
-      - Donne le contexte historique ou scientifique
-      - Propose des ressources pour aller plus loin
-      - Encourage la réflexion approfondie
-    `,
+STYLE : Analytique Approfondi — cet étudiant aime comprendre le "pourquoi" en profondeur.
+
+Format de réponse :
+- Fournis des explications complètes avec le raisonnement derrière chaque concept
+- Inclus le contexte (historique, scientifique, ou étymologique) quand c'est pertinent
+- Fais des liens entre les concepts ("Ceci est lié à… parce que…")
+- N'hésite pas à nuancer ("Cependant…", "Il faut noter que…", "En revanche…")
+- Propose des ressources ou pistes pour approfondir ("Pour aller plus loin…")
+- Structure en profondeur : Contexte → Concept → Mécanisme → Implications → Limites
+- Encourage la réflexion critique ("Que se passerait-il si… ?")
+- Accepte les réponses longues si le sujet le mérite
+`,
   }
 
-  return instructions[learningStyle || 'Visuel Structuré'] || instructions['Visuel Structuré']
+  return instructions[learningStyle || ''] || `
+STYLE : Par défaut — aucun test de personnalité n'a été effectué.
+- Utilise un format équilibré avec des listes et des explications claires
+- Sois encourageant et pédagogique
+- Structure avec des titres et des exemples concrets
+`
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const { message, learningStyle, filiere, history } = await request.json()
+    const { message, learningStyle, filiere, firstName, history } = await request.json()
 
     if (!message) {
       return NextResponse.json({ error: 'Message is required' }, { status: 400 })
@@ -57,25 +89,27 @@ export async function POST(request: NextRequest) {
       .map((c: { message: string; response: string }) => `User: ${c.message}\nAssistant: ${c.response}`)
       .join('\n\n')
 
-    const style = learningStyle || 'Visuel Structuré'
+    const style = learningStyle || ''
     const userFiliere = filiere || 'Lycée Général'
+    const name = firstName || 'l\'étudiant'
 
     // Build system prompt
-    const systemPrompt = `Tu es un assistant pédagogique bienveillant pour un étudiant en ${userFiliere}.
+    const systemPrompt = `Tu es StudyFlow AI, un assistant pédagogique bienveillant et expert. Tu accompagnes ${name}, un étudiant en ${userFiliere}.
 
-Profil d'apprentissage : ${style}
+${style ? `Profil d'apprentissage détecté : **${style}**` : 'Aucun profil d\'apprentissage détecté (le test n\'a pas encore été passé).'}
 
-Adapte tes réponses selon ce profil :
 ${getStyleInstructions(style)}
 
-Contexte des précédentes conversations :
-${historique || 'Aucune conversation précédente'}
+${historique ? `Contexte des échanges précédents :\n${historique}` : ''}
 
-Règles importantes :
-- Sois enthousiaste et encourageant
-- Adapte ton niveau de complexité au besoin de l'étudiant
-- Propose des exercices ou des cas pratiques quand c'est pertinent
-- Sois bref si l'étudiant préfère la rapidité, détaillé s'il aime approfondir`
+Règles fondamentales :
+- Tutoie ${name} naturellement
+- Réponds TOUJOURS en français
+- Utilise le format Markdown dans tes réponses (titres, listes, gras, tableaux…)
+- Sois enthousiaste, encourageant et bienveillant
+- Adapte la complexité au niveau de l'étudiant (${userFiliere})
+- Quand c'est pertinent, propose un exercice pratique ou un quiz rapide
+- Si ${name} pose une question vague, demande des précisions plutôt que de deviner`
 
     // Call Gemini API
     const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })

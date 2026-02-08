@@ -4,7 +4,10 @@ import { useEffect, useState, useRef, useCallback } from 'react'
 import { useUser } from '@/hooks/useUser'
 import { db } from '@/lib/firebase'
 import { collection, query, where, orderBy, onSnapshot, limit, addDoc, Timestamp } from 'firebase/firestore'
-import { Send, Sparkles, Bot, User, Lightbulb, MessageSquare } from 'lucide-react'
+import { Send, Sparkles, Bot, User, Lightbulb, MessageSquare, Brain, ArrowRight } from 'lucide-react'
+import Link from 'next/link'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 interface Message {
   id: string
@@ -20,13 +23,50 @@ interface ConversationEntry {
   created_at: string
 }
 
-const SUGGESTED_QUESTIONS = [
-  'Explique-moi un concept en maths',
-  'Résume ce texte pour moi',
-  'Aide-moi à préparer mon exposé',
-  'Crée un plan de révision',
-  'Donne-moi des exercices d\'entraînement',
-]
+const STYLE_META: Record<string, { emoji: string; label: string; color: string }> = {
+  'Visuel Structuré': { emoji: '📊', label: 'Visuel Structuré', color: 'bg-blue-100 text-blue-700 border-blue-200' },
+  'Auditif Conversationnel': { emoji: '🎙️', label: 'Auditif Conversationnel', color: 'bg-amber-100 text-amber-700 border-amber-200' },
+  'Pragmatique Rapide': { emoji: '⚡', label: 'Pragmatique Rapide', color: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
+  'Analytique Approfondi': { emoji: '📚', label: 'Analytique Approfondi', color: 'bg-purple-100 text-purple-700 border-purple-200' },
+}
+
+const SUGGESTED_QUESTIONS: Record<string, string[]> = {
+  'Visuel Structuré': [
+    'Fais-moi un schéma récapitulatif sur ce chapitre',
+    'Organise ces informations dans un tableau comparatif',
+    'Crée une fiche de révision visuelle',
+    'Résume ce cours avec des points clés numérotés',
+  ],
+  'Auditif Conversationnel': [
+    'Explique-moi ce concept comme si on discutait',
+    'Raconte-moi l\'histoire derrière cette théorie',
+    'Aide-moi à comprendre en me posant des questions',
+    'Reformule cette leçon de manière simple',
+  ],
+  'Pragmatique Rapide': [
+    'Donne-moi la réponse courte et un exemple',
+    'Crée-moi un exercice pratique sur ce sujet',
+    'Résume en 3 points essentiels',
+    'Donne-moi une méthode rapide pour résoudre ça',
+  ],
+  'Analytique Approfondi': [
+    'Explique-moi le pourquoi derrière ce concept',
+    'Quels sont les liens entre ces deux notions ?',
+    'Analyse en profondeur ce sujet',
+    'Quelles sont les limites de cette théorie ?',
+  ],
+  default: [
+    'Explique-moi un concept en maths',
+    'Résume ce texte pour moi',
+    'Aide-moi à préparer mon exposé',
+    'Crée un plan de révision',
+    'Donne-moi des exercices d\'entraînement',
+  ],
+}
+
+function getSuggestedQuestions(style: string | null | undefined): string[] {
+  return SUGGESTED_QUESTIONS[style || ''] || SUGGESTED_QUESTIONS.default
+}
 
 export default function AIChatPage() {
   const { user, profile, loading } = useUser()
@@ -36,6 +76,9 @@ export default function AIChatPage() {
   const [conversationHistory, setConversationHistory] = useState<ConversationEntry[]>([])
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  const styleMeta = profile?.learning_style ? STYLE_META[profile.learning_style] : null
+  const hasCompletedTest = profile?.preferences?.completed_test === true
 
   useEffect(() => {
     if (!user) return
@@ -90,6 +133,7 @@ export default function AIChatPage() {
           message: currentInput,
           learningStyle: profile?.learning_style,
           filiere: profile?.filiere,
+          firstName: profile?.first_name,
           history: recentHistory,
         }),
       })
@@ -157,6 +201,8 @@ export default function AIChatPage() {
     )
   }
 
+  const suggestedQuestions = getSuggestedQuestions(profile?.learning_style)
+
   return (
     <div className="h-[calc(100vh-4rem)] flex">
       {/* Sidebar - Conversation History */}
@@ -170,6 +216,17 @@ export default function AIChatPage() {
             Nouvelle conversation
           </button>
         </div>
+
+        {/* Learning Style Badge in sidebar */}
+        {styleMeta && (
+          <div className="px-4 pt-4">
+            <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-medium ${styleMeta.color}`}>
+              <span>{styleMeta.emoji}</span>
+              <span>{styleMeta.label}</span>
+            </div>
+          </div>
+        )}
+
         <div className="flex-1 overflow-y-auto p-4">
           <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
             Historique récent
@@ -212,9 +269,18 @@ export default function AIChatPage() {
               <p className="text-sm text-gray-500">Propulsé par Gemini 2.5 Flash</p>
             </div>
           </div>
-          <div className="flex items-center gap-2 text-sm text-gray-500">
-            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            En ligne
+          <div className="flex items-center gap-3">
+            {/* Learning style badge in header */}
+            {styleMeta && (
+              <div className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium ${styleMeta.color}`}>
+                <span>{styleMeta.emoji}</span>
+                <span>{styleMeta.label}</span>
+              </div>
+            )}
+            <div className="flex items-center gap-2 text-sm text-gray-500">
+              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              En ligne
+            </div>
           </div>
         </div>
 
@@ -226,14 +292,30 @@ export default function AIChatPage() {
                 <Sparkles className="w-10 h-10 text-indigo-600" />
               </div>
               <h2 className="text-2xl font-bold text-gray-900 mb-3">
-                Comment puis-je t'aider aujourd'hui ?
+                {profile?.first_name
+                  ? `Salut ${profile.first_name} ! Comment puis-je t'aider ?`
+                  : 'Comment puis-je t\'aider aujourd\'hui ?'}
               </h2>
-              <p className="text-gray-600 mb-8 max-w-md">
-                Je suis ton assistant pédagogique personnel. Je peux t'expliquer des concepts,
-                créer des quiz, résumer tes cours ou t'aider à réviser.
+              <p className="text-gray-600 mb-4 max-w-md">
+                {styleMeta
+                  ? `Tes réponses sont adaptées à ton profil ${styleMeta.emoji} ${styleMeta.label}. Je m'adapte à ta façon d'apprendre !`
+                  : 'Je suis ton assistant pédagogique personnel. Je peux t\'expliquer des concepts, créer des quiz, résumer tes cours ou t\'aider à réviser.'}
               </p>
+
+              {/* CTA to take the test if not done */}
+              {!hasCompletedTest && (
+                <Link
+                  href="/app/onboarding/personality-test"
+                  className="mb-6 flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-200 text-amber-800 rounded-2xl hover:border-amber-300 hover:shadow-md transition-all group"
+                >
+                  <Brain className="w-5 h-5 text-amber-600" />
+                  <span className="font-semibold text-sm">Passe le test de personnalité pour des réponses personnalisées</span>
+                  <ArrowRight className="w-4 h-4 text-amber-500 group-hover:translate-x-1 transition-transform" />
+                </Link>
+              )}
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
-                {SUGGESTED_QUESTIONS.map((question) => (
+                {suggestedQuestions.map((question) => (
                   <button
                     key={question}
                     onClick={() => {
@@ -276,7 +358,15 @@ export default function AIChatPage() {
                         ? 'bg-gradient-to-br from-indigo-600 to-purple-600 text-white rounded-br-md'
                         : 'bg-white border border-gray-200 text-gray-800 rounded-bl-md shadow-sm'
                     }`}>
-                      <p className="whitespace-pre-wrap leading-relaxed">{message.content}</p>
+                      {message.role === 'assistant' ? (
+                        <div className="prose prose-sm max-w-none prose-headings:text-gray-900 prose-headings:font-bold prose-p:text-gray-700 prose-strong:text-gray-900 prose-a:text-indigo-600 prose-code:text-indigo-700 prose-code:bg-indigo-50 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-pre:bg-gray-900 prose-pre:text-gray-100 prose-li:text-gray-700 prose-th:text-gray-900 prose-td:text-gray-700">
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                            {message.content}
+                          </ReactMarkdown>
+                        </div>
+                      ) : (
+                        <p className="whitespace-pre-wrap leading-relaxed">{message.content}</p>
+                      )}
                       <span className={`text-xs mt-2 block ${
                         message.role === 'user' ? 'text-indigo-200' : 'text-gray-400'
                       }`}>
@@ -339,7 +429,7 @@ export default function AIChatPage() {
               </button>
             </form>
             <p className="text-xs text-gray-400 mt-2 text-center">
-              L'IA peut parfois faire des erreurs. Vérifie les informations importantes.
+              L&apos;IA peut parfois faire des erreurs. Vérifie les informations importantes.
             </p>
           </div>
         </div>

@@ -128,13 +128,21 @@ export function AuthButton() {
               <MessageSquare className="w-5 h-5 text-gray-400" />
               <span className="font-medium">Assistant IA</span>
             </Link>
-            <Link 
-              href="/app/onboarding/personality-test" 
+            <Link
+              href="/app/onboarding/personality-test"
               className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 transition-colors"
               onClick={() => setIsOpen(false)}
             >
               <User className="w-5 h-5 text-gray-400" />
               <span className="font-medium">Mon profil</span>
+            </Link>
+            <Link
+              href="/app/dashboard/settings"
+              className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 transition-colors"
+              onClick={() => setIsOpen(false)}
+            >
+              <Settings className="w-5 h-5 text-gray-400" />
+              <span className="font-medium">Paramètres</span>
             </Link>
           </div>
 

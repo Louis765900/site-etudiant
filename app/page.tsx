@@ -325,14 +325,14 @@ export default function Home() {
             <div>
               <h4 className="text-white font-semibold mb-4">Légal</h4>
               <ul className="space-y-2">
-                <li><Link href="#" className="hover:text-white transition-colors">Confidentialité</Link></li>
-                <li><Link href="#" className="hover:text-white transition-colors">Conditions d'utilisation</Link></li>
-                <li><Link href="#" className="hover:text-white transition-colors">Mentions légales</Link></li>
+                <li><Link href="/legal/privacy" className="hover:text-white transition-colors">Confidentialité</Link></li>
+                <li><Link href="/legal/privacy" className="hover:text-white transition-colors">Conditions d&apos;utilisation</Link></li>
+                <li><Link href="/legal/privacy#mentions" className="hover:text-white transition-colors">Mentions légales</Link></li>
               </ul>
             </div>
           </div>
           <div className="pt-8 border-t border-gray-800 text-center text-gray-500">
-            <p>© 2025 StudyFlow. Tous droits réservés.</p>
+            <p>© 2026 StudyFlow. Tous droits réservés.</p>
           </div>
         </div>
       </footer>
