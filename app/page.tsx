@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { Sparkles, BookOpen, Target, Zap, Users, Shield } from 'lucide-react'
+import MascotteShowcase from '@/components/MascotteShowcase'
 
 export default function Home() {
   return (
@@ -199,6 +200,37 @@ export default function Home() {
                 <p className="text-gray-600 leading-relaxed">{feature.description}</p>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Mascotte Section */}
+      <section className="py-24 bg-gradient-to-br from-slate-50 via-indigo-50/30 to-purple-50/30">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            <div className="order-2 lg:order-1 space-y-6">
+              <h2 className="text-4xl font-bold text-gray-900">
+                Ton{' '}
+                <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                  copilote etudiant
+                </span>{' '}
+                sur le web
+              </h2>
+              <p className="text-lg text-gray-600 leading-relaxed">
+                Decouvre notre mascotte, toujours presente pour t&apos;accompagner dans tes etudes.
+                Que tu sois sur ton laptop, ton smartphone ou simplement en train de naviguer,
+                elle est la pour te guider et te motiver.
+              </p>
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-1 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full" />
+                <p className="text-sm text-gray-500 font-medium">
+                  Clique sur les boutons pour changer de variante
+                </p>
+              </div>
+            </div>
+            <div className="order-1 lg:order-2 flex justify-center">
+              <MascotteShowcase />
+            </div>
           </div>
         </div>
       </section>
